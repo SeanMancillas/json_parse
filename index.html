@@ -1,69 +1,97 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="UTF-8">
-    <title>JSON to Table Converter</title>
-  </head>
-  <body>
-    <form>
-      <label for="json-input">Paste your JSON here:</label>
-      <br>
-      <textarea id="json-input" rows="10" cols="50"></textarea>
-      <br>
-      <button id="interpret-button">Interpret</button>
-    </form>
-    <table id="output-table">
-      <thead>
-        <tr>
-          <th>Key</th>
-          <th>Value</th>
-          <th>Mapping</th>
-        </tr>
-      </thead>
-      <tbody>
-      </tbody>
-    </table>
+<head>
+	<title>Survey Importer</title>
+</head>
+<body>
+	<h1>Survey Importer</h1>
+	<p>Paste your JSON payload below:</p>
+	<textarea id="json-payload" cols="80" rows="10"></textarea>
+	<br><br>
+	<button onclick="importSurvey()">Import Survey</button>
+	<br><br>
+	<table id="survey-table">
+		<thead>
+			<tr>
+				<th>Question</th>
+				<th>Question Type</th>
+				<th>Options</th>
+				<th>Randomize?</th>
+				<th>Include Other Option?</th>
+				<th>Allow multiple selection?</th>
+				<th>Actions</th>
+			</tr>
+		</thead>
+		<tbody>
+		</tbody>
+	</table>
+	<script>
+		function importSurvey() {
+			// Get the JSON payload from the textarea
+			const jsonPayload = document.getElementById("json-payload").value;
+			const payload = JSON.parse(jsonPayload);
+			const questions = payload.fields;
 
-    <script>
-      const interpretButton = document.getElementById('interpret-button');
-      interpretButton.addEventListener('click', () => {
-        const jsonInput = document.getElementById('json-input').value;
-        const jsonData = JSON.parse(jsonInput);
-        const outputTableBody = document.querySelector('#output-table tbody');
-        outputTableBody.innerHTML = '';
-        const flattenObject = (obj, path = []) => {
-          return Object.assign({}, ...Object.keys(obj).map(key => {
-            const newPath = path.concat(key);
-            if (typeof obj[key] === 'object') {
-              return flattenObject(obj[key], newPath);
-            } else {
-              return { [newPath.join('.')]: obj[key] };
-            }
-          }));
-        };
-        const flattenedData = flattenObject(jsonData.event_data);
-        for (const [key, value] of Object.entries(flattenedData)) {
-          const newRow = document.createElement('tr');
-          const keyCell = document.createElement('td');
-          keyCell.textContent = key;
-          newRow.appendChild(keyCell);
-          const valueCell = document.createElement('td');
-          valueCell.textContent = value;
-          newRow.appendChild(valueCell);
-          const mappingCell = document.createElement('td');
-          const mappingDropdown = document.createElement('select');
-          const mappingOptions = ['Name', 'Email', 'Property', 'Disregard'];
-          for (const option of mappingOptions) {
-            const mappingOption = document.createElement('option');
-            mappingOption.value = option.toLowerCase();
-            mappingOption.textContent = option;
-            mappingDropdown.appendChild(mappingOption);
-          }
-          mappingCell.appendChild(mappingDropdown);
-          newRow.appendChild(mappingCell);
-          outputTableBody.appendChild(newRow);
-        }
-      });
-    </script>
-  </body>
+			// Create a table row for each question
+			const tableBody = document.querySelector("#survey-table tbody");
+			tableBody.innerHTML = "";
+			for (let i = 0; i < questions.length; i++) {
+				const question = questions[i];
+				const row = document.createElement("tr");
+
+				const questionCell = document.createElement("td");
+				questionCell.innerText = question.title;
+				row.appendChild(questionCell);
+
+				const typeCell = document.createElement("td");
+				typeCell.innerText = question.type;
+				row.appendChild(typeCell);
+
+				const optionsCell = document.createElement("td");
+				if (question.type === "multiple_choice") {
+					optionsCell.innerText = question.choices.labels.join(", ");
+				} else if (question.type === "group") {
+					// Extract nested questions from group
+					const nestedQuestions = question.properties.fields;
+					const nestedOptions = [];
+					for (let j = 0; j < nestedQuestions.length; j++) {
+						const nestedQuestion = nestedQuestions[j];
+						if (nestedQuestion.type === "multiple_choice") {
+							nestedOptions.push(nestedQuestion.title + ": " + nestedQuestion.choices.labels.join(", "));
+						} else {
+							nestedOptions.push(nestedQuestion.title + ": N/A");
+						}
+					}
+					optionsCell.innerText = nestedOptions.join("; ");
+				} else {
+					optionsCell.innerText = "N/A";
+				}
+				row.appendChild(optionsCell);
+
+				const randomizeCell = document.createElement("td");
+				randomizeCell.innerText = question.randomize || false;
+				row.appendChild(randomizeCell);
+
+				const otherOptionCell = document.createElement("td");
+				otherOptionCell.innerText = question.allow_other_choice || false;
+				row.appendChild(otherOptionCell);
+
+				const multipleSelectionCell = document.createElement("td");
+				multipleSelectionCell.innerText = question.allow_multiple_selection || false;
+				row.appendChild(multipleSelectionCell);
+
+				const actionsCell = document.createElement("td");
+				const confirmButton = document.createElement("button");
+				confirmButton.innerText = "Confirm";
+				actionsCell.appendChild(confirmButton);
+				const editButton = document.createElement("button");
+				editButton.innerText = "Edit";
+				actionsCell.appendChild(editButton);
+				row.appendChild(actionsCell);
+
+				tableBody.appendChild(row);
+			}
+		}
+	</script>
+</body>
 </html>
